@@ -19,21 +19,10 @@ Drumstick stick;
 // Play with the drum first
 void playDrum(int childId)
 {
+    std::string id = std::to_string(childId);
     std::string line;
-
-    //Try to get Drum
-    std::unique_lock<std::mutex> drumLock(drum.mux);
-    if(drumLock.owns_lock())
-    {
-        line = "Child " + std::to_string(childId) + ": I have the drum, time to get the drumstick!\n";
-        std::cout << line;
-    }
-
-    // run to the other side of the room
-    sleep(1);
-
-    //Try to get Stick
-    std::unique_lock<std::mutex> stickLock(stick.mux);
+    std::unique_lock<std::mutex> drumLock(drum.mux, std::defer_lock);
+    std::unique_lock<std::mutex> stickLock(stick.mux, std::defer_lock);
 
     //If you failed, try again
     while(!drumLock.owns_lock() || !stickLock.owns_lock())
@@ -41,54 +30,42 @@ void playDrum(int childId)
         if(!drumLock.owns_lock())
         {
             drumLock.lock();
-            sleep(1); // run to the other side of the room
-            line = "Child " + std::to_string(childId) + ": I have the drum, time to get the drumstick!\n";
+            line = "Child " + id + ": I have the drum, time to get the drumstick!\n";
             std::cout << line;
         }
+        sleep(1); // run to the other side of the room
         if(!stickLock.owns_lock())
         {
             stickLock.lock();
         }
     }
-    line = "Child " + std::to_string(childId) + ": I have both! I can play! yay!\n\n";
+    line = "Child " + id + ": I have both! I can play! yay!\n\n";
     std::cout << line;
 }
 
 // Play with the stick first
 void playDrumstick(int childId)
 {
+    std::string id = std::to_string(childId);
     std::string line;
+    std::unique_lock<std::mutex> stickLock(stick.mux,std::defer_lock);
+    std::unique_lock<std::mutex> drumLock(drum.mux, std::defer_lock);
 
-    //Try to get stick
-    std::unique_lock<std::mutex> stickLock(stick.mux);
-    if(stickLock.owns_lock())
-    {
-        line = "Child " + std::to_string(childId) + ": I have the stick, time to get the drum!\n";
-        std::cout << line;
-    }
-
-    // run to the other side of the room
-    sleep(1);
-
-    //Try to get drum
-    std::unique_lock<std::mutex> drumLock(drum.mux);
-
-    //If you failed, try again
     while(!drumLock.owns_lock() || !stickLock.owns_lock())
     {
         if(!drumLock.owns_lock())
         {
             drumLock.lock();
-            line = "Child " + std::to_string(childId) + ": I have the stick, time to get the drum!\n";
+            line = "Child " + id + ": I have the stick, time to get the drum!\n";
             std::cout << line;
-            sleep(1); // run to the other side of the room
         }
+        sleep(1); // run to the other side of the room
         if(!stickLock.owns_lock())
         {
             stickLock.lock();
         }
     }
-    line = "Child " + std::to_string(childId) + ": I have both! I can play! yay!\n\n";
+    line = "Child " + id + ": I have both! I can play! yay!\n\n";
     std::cout << line;
 }
 
