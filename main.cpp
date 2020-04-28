@@ -1,26 +1,123 @@
 #include <iostream> // for cout, cin, ...
 #include <thread> // for threads
-#include <chrono> // for wibbly-wobbly time
 #include <unistd.h> // for sleep
+#include <mutex> // mutex, unique_lock, ...
+#include <vector>
 
-void helloWorld(std::string adj, int id)
+struct Drum
 {
-    std::cout << "Hello " << adj << " World " << id << "!" << std::endl;
-    sleep(2); // This helps to break up the printing and show what's actually happening where
+    std::mutex mux;
+};
+Drum drum;
+
+struct Drumstick
+{
+    std::mutex mux;
+};
+Drumstick stick;
+
+// Play with the drum first
+void playDrum(int childId)
+{
+    std::string line;
+
+    //Try to get Drum
+    std::unique_lock<std::mutex> drumLock(drum.mux);
+    if(drumLock.owns_lock())
+    {
+        line = "Child " + std::to_string(childId) + ": I have the drum, time to get the drumstick!\n";
+        std::cout << line;
+    }
+
+    // run to the other side of the room
+    sleep(1);
+
+    //Try to get Stick
+    std::unique_lock<std::mutex> stickLock(stick.mux);
+
+    //If you failed, try again
+    while(!drumLock.owns_lock() || !stickLock.owns_lock())
+    {
+        if(!drumLock.owns_lock())
+        {
+            drumLock.lock();
+            sleep(1); // run to the other side of the room
+            line = "Child " + std::to_string(childId) + ": I have the drum, time to get the drumstick!\n";
+            std::cout << line;
+        }
+        if(!stickLock.owns_lock())
+        {
+            stickLock.lock();
+        }
+    }
+    line = "Child " + std::to_string(childId) + ": I have both! I can play! yay!\n\n";
+    std::cout << line;
+}
+
+// Play with the stick first
+void playDrumstick(int childId)
+{
+    std::string line;
+
+    //Try to get stick
+    std::unique_lock<std::mutex> stickLock(stick.mux);
+    if(stickLock.owns_lock())
+    {
+        line = "Child " + std::to_string(childId) + ": I have the stick, time to get the drum!\n";
+        std::cout << line;
+    }
+
+    // run to the other side of the room
+    sleep(1);
+
+    //Try to get drum
+    std::unique_lock<std::mutex> drumLock(drum.mux);
+
+    //If you failed, try again
+    while(!drumLock.owns_lock() || !stickLock.owns_lock())
+    {
+        if(!drumLock.owns_lock())
+        {
+            drumLock.lock();
+            line = "Child " + std::to_string(childId) + ": I have the stick, time to get the drum!\n";
+            std::cout << line;
+            sleep(1); // run to the other side of the room
+        }
+        if(!stickLock.owns_lock())
+        {
+            stickLock.lock();
+        }
+    }
+    line = "Child " + std::to_string(childId) + ": I have both! I can play! yay!\n\n";
+    std::cout << line;
+}
+
+// Spawn the children
+std::vector<std::thread> toddlers; // globals are generally bad, however, this is to help in the event you decide to make a parent
+void spawnToddlerThreads(int numToddlers)
+{
+    toddlers.resize(numToddlers);
+    for(int i=0; i < numToddlers; ++i)
+    {
+        if(i%2 == 0)
+        {
+            toddlers[i] = std::thread(playDrum, i);
+        }
+        else
+        {
+            toddlers[i] = std::thread(playDrumstick, i);
+        }
+    }
+    for(int i=0; i<numToddlers; ++i)
+    {
+        toddlers.at(i).join();
+    }
 }
 
 int main(int argc, char *argv[])
 {
+    spawnToddlerThreads(5);
     // TODO:
-    // 1. Create a function called helloSerialWorlds(int numTimes)
-    //    * Start a timer at the top of the function
-    //    * call helloWorld() numTimes with different ids, passing in "Serial" as the adj argument
-    //    * Stop the timer and return how long the function took
-    // 2. Create a function called helloConcurrentWorld(int numTimes)
-    //    * Start a timer at the top of the function
-    //    * call helloWorld() numTimes, passing in "Concurrent" as the adj argument; this time spawn a thread for each call
-    //    * join threads [HINT: Be aware of your scope and where you do this, joining prematurely will render the threads useless]
-    //    * Stop timer and return how long the function took
-    // 3. Call both functions in main with the same numTimes
-    // 4. Print times for each function
+    // Currently this causes a deadlock. Fix the deadlock with minimum changes to the existing code.
+    // If you're feeling particularly adventurous create a parent to force the toddlers to share.
 }
